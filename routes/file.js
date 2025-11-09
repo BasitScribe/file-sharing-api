@@ -1,7 +1,7 @@
-const express = require('express');
+import express from 'express';
 const router = express.Router();
-const File = require('../models/File');
-const cloudinary = require('../config/cloudinary');
+import File from '../models/File.js';
+import cloudinary from '../config/cloudinary.js';
 
 // GET /f/:id  -> redirect to signed cloudinary url or return storageUrl
 router.get('/f/:id', async (req, res) => {
@@ -46,4 +46,4 @@ router.delete('/api/file/:id', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

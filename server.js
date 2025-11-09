@@ -1,33 +1,64 @@
-require('dotenv').config();
-const express = require('express');
-const morgan = require('morgan');
-const connectDB = require('./config/db');
-const uploadRouter = require('./routes/upload');
-const fileRouter = require('./routes/file');
-const startCleanup = require('./utils/cleanup');
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import morgan from "morgan";
+import connectDB from "./config/db.js";
+import uploadRouter from "./routes/upload.js";
+import fileRouter from "./routes/file.js";
+import startCleanup from "./utils/cleanup.js";
+
+dotenv.config();
 
 const app = express();
+
+// ✅ Allowed origins (local + Vercel)
+const allowedOrigins = [
+  process.env.CLIENT_URL,       // your deployed frontend
+  "http://localhost:5173",      // local dev frontend
+].filter(Boolean);
+
+// ✅ Robust CORS setup (handles preflight)
+const corsOptions = {
+  origin: (origin, callback) => {
+    // allow requests with no origin (mobile, curl, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+  credentials: true,
+};
+
+// apply CORS globally
+app.use(cors(corsOptions));
+// handle preflight explicitly
+app.options("*", cors(corsOptions));
+
 app.use(express.json());
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 
-// Routes
-app.use('/api', uploadRouter);
-app.use('/', fileRouter);
+// ✅ Routes
+app.use("/api", uploadRouter);
+app.use("/", fileRouter);
 
-// health
-app.get('/health', (req, res) => res.json({ ok: true }));
+// ✅ Health check
+app.get("/health", (req, res) => res.json({ ok: true }));
 
-// start
+// ✅ Start server
 const PORT = process.env.PORT || 4000;
-const HOST = '0.0.0.0';
+const HOST = "0.0.0.0";
 
 const start = async () => {
-  await connectDB();
-  // start cron cleanup (will only run in main instance)
-  startCleanup();
-  app.listen(PORT, HOST, () =>
-    console.log(`Server running on http://${HOST}:${PORT}`)
-  );
+  try {
+    await connectDB();
+    startCleanup();
+    app.listen(PORT, HOST, () =>
+      console.log(`🚀 Server running at http://${HOST}:${PORT}`)
+    );
+  } catch (error) {
+    console.error("❌ Failed to start server:", error);
+    process.exit(1);
+  }
 };
 
 start();

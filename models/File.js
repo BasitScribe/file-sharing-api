@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
 const FileSchema = new mongoose.Schema({
   _id: { type: String, required: true }, // we'll use nanoid
@@ -9,10 +9,11 @@ const FileSchema = new mongoose.Schema({
   contentType: { type: String },
   uploadedAt: { type: Date, default: Date.now },
   expiresAt: { type: Date, index: true },
-  downloads: { type: Number, default: 0 }
+  downloads: { type: Number, default: 0 },
 });
 
-// Optional TTL index if you want Mongo to auto-delete metadata (but still need Cloudinary delete)
+// Optional TTL index (Mongo auto-delete metadata)
 FileSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
-module.exports = mongoose.model('File', FileSchema);
+// ✅ ESM-compatible export
+export default mongoose.model("File", FileSchema);

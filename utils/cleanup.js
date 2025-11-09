@@ -1,6 +1,6 @@
-const cron = require('node-cron');
-const File = require('../models/File');
-const cloudinary = require('../config/cloudinary');
+import cron from 'node-cron';
+import File from '../models/File.js'; 
+import cloudinary from '../config/cloudinary.js';
 
 const startCleanup = () => {
   // runs every hour at minute 0
@@ -33,4 +33,4 @@ const startCleanup = () => {
   }, { timezone: 'UTC' });
 };
 
-module.exports = startCleanup;
+export default startCleanup;
