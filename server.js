@@ -13,27 +13,27 @@ const app = express();
 
 // ✅ Allowed origins (local + Vercel)
 const allowedOrigins = [
-  process.env.CLIENT_URL,       // your deployed frontend
+  process.env.CLIENT_URL,       // your deployed frontend (Vercel)
   "http://localhost:5173",      // local dev frontend
 ].filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow non-browser requests
+    if (!origin) return callback(null, true); // allow non-browser or same-origin requests
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.warn("❌ Blocked by CORS:", origin);
     return callback(new Error("Not allowed by CORS"));
   },
   methods: ["GET", "POST", "DELETE", "OPTIONS"],
   credentials: true,
 };
 
-// apply CORS for all routes
+// ✅ Apply CORS globally
 app.use(cors(corsOptions));
 
-// handle preflight OPTIONS by explicitly invoking the cors middleware
+// ✅ Safe preflight handler (fixes path-to-regexp crash in Docker)
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") {
-    // run the cors middleware for this request then end preflight
     return cors(corsOptions)(req, res, () => res.sendStatus(204));
   }
   next();
