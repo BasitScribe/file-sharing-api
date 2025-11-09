@@ -35,13 +35,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// ✅ Explicit CORS headers (Render + Cloudflare safe)
+/* ====== FORCE CORS HEADERS (top-level, unconditional) ======
+   This ensures headers are present even behind CDN/proxy (Render/Cloudflare). */
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", process.env.CLIENT_URL || "*");
-  res.header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
+  const origin = req.get('origin') || process.env.CLIENT_URL || '*';
+
+  // Always set these headers (safe for testing). If you want stricter, replace '*' with origin check.
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  // Short-circuit preflight
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 
