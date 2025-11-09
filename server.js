@@ -17,11 +17,9 @@ const allowedOrigins = [
   "http://localhost:5173",      // local dev frontend
 ].filter(Boolean);
 
-// ✅ Robust CORS setup (handles preflight)
 const corsOptions = {
   origin: (origin, callback) => {
-    // allow requests with no origin (mobile, curl, etc.)
-    if (!origin) return callback(null, true);
+    if (!origin) return callback(null, true); // allow non-browser requests
     if (allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error("Not allowed by CORS"));
   },
@@ -29,10 +27,17 @@ const corsOptions = {
   credentials: true,
 };
 
-// apply CORS globally
+// apply CORS for all routes
 app.use(cors(corsOptions));
-// handle preflight explicitly
-app.options("*", cors(corsOptions));
+
+// handle preflight OPTIONS by explicitly invoking the cors middleware
+app.use((req, res, next) => {
+  if (req.method === "OPTIONS") {
+    // run the cors middleware for this request then end preflight
+    return cors(corsOptions)(req, res, () => res.sendStatus(204));
+  }
+  next();
+});
 
 app.use(express.json());
 app.use(morgan("dev"));
