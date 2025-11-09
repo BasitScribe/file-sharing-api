@@ -11,33 +11,30 @@ dotenv.config();
 
 const app = express();
 
-// ✅ Allowed origins (local + Vercel)
+// CORS: explicit, safe, handles preflight
 const allowedOrigins = [
-  process.env.CLIENT_URL,       // your deployed frontend (Vercel)
-  "http://localhost:5173",      // local dev frontend
+  process.env.CLIENT_URL,       // e.g. https://your-vercel-app.vercel.app
+  "http://localhost:5173"       // local dev
 ].filter(Boolean);
 
-const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow non-browser or same-origin requests
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    console.warn("❌ Blocked by CORS:", origin);
-    return callback(new Error("Not allowed by CORS"));
-  },
-  methods: ["GET", "POST", "DELETE", "OPTIONS"],
-  credentials: true,
-};
-
-// ✅ Apply CORS globally
-app.use(cors(corsOptions));
-
-// ✅ Safe preflight handler (fixes path-to-regexp crash in Docker)
 app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    return cors(corsOptions)(req, res, () => res.sendStatus(204));
+  const origin = req.get('origin');
+  // allow non-browser requests (curl, etc.)
+  if (!origin) return next();
+
+  // if origin is allowed, set CORS response headers
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   }
+
+  // respond to preflight immediately
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
+
 
 app.use(express.json());
 app.use(morgan("dev"));
