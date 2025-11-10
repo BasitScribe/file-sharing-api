@@ -31,10 +31,15 @@ export default function UploadBox() {
     fd.append("ttlHours", String(ttl));
 
     try {
-      const res = await axios.post(`${API}/api/upload`, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (e) => setProgress(Math.round((e.loaded * 100) / e.total)),
-      });
+      // const res = await axios.post(`${API}/api/upload`, fd, {
+      //   headers: { "Content-Type": "multipart/form-data" },
+      //   onUploadProgress: (e) => setProgress(Math.round((e.loaded * 100) / e.total)),
+      // });
+      // send to Vercel proxy (same-origin)
+          const res = await axios.post('/api/proxy-upload', fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+            onUploadProgress: (e) => { /* same as before */ }
+          });
       setResult(res.data);
     } catch (err) {
       console.error(err);

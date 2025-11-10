@@ -1,5 +1,5 @@
 import React from "react";
-import UploadBox from "./componenets/UploadBox";
+import UploadBox from "./components/UploadBox";
 
 export default function App() {
   return (
