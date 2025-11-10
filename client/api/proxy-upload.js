@@ -1,41 +1,40 @@
+// client/api/proxy-upload.js
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
   const RENDER_URL = process.env.RENDER_URL;
-  if (!RENDER_URL) return res.status(500).json({ error: "missing_render_url" });
-
-  // Clone headers from client request but remove host to avoid conflicts
-  const forwardHeaders = { ...req.headers };
-  delete forwardHeaders.host;
+  if (!RENDER_URL) {
+    console.error("proxy-upload: missing RENDER_URL");
+    return res.status(500).json({ error: "missing_render_url" });
+  }
 
   try {
-    // forward the raw request body and headers to Render
-    const upstream = await fetch(`${RENDER_URL}/api/upload`, {
+    // read raw incoming body into a buffer
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    const bodyBuffer = Buffer.concat(chunks);
+
+    // Build headers to forward - keep content-type and any auth if present
+    const forwardHeaders = {};
+    if (req.headers["content-type"]) forwardHeaders["content-type"] = req.headers["content-type"];
+    if (req.headers["authorization"]) forwardHeaders["authorization"] = req.headers["authorization"];
+
+    const upstreamRes = await fetch(`${RENDER_URL}/api/upload`, {
       method: "POST",
       headers: forwardHeaders,
-      // `req` is a readable stream — passing it directly streams the multipart content
-      body: req,
-      // avoid automatic redirect handling weirdness
-      redirect: "manual",
+      body: bodyBuffer,
     });
 
-    // stream response back to the browser
-    // copy status, headers (but avoid hop-by-hop headers)
-    const forbidden = ["transfer-encoding", "content-encoding", "connection", "keep-alive"];
-    upstream.headers.forEach((value, key) => {
-      if (!forbidden.includes(key.toLowerCase())) res.setHeader(key, value);
-    });
-
-    res.status(upstream.status);
-    const text = await upstream.text();
-    // try to parse JSON safely; otherwise send raw
+    const text = await upstreamRes.text();
+    // try JSON parse
     try {
       const json = JSON.parse(text);
-      return res.json(json);
+      // forward status and json
+      return res.status(upstreamRes.status).json(json);
     } catch (e) {
-      return res.send(text);
+      res.status(upstreamRes.status).type("text").send(text);
     }
   } catch (err) {
     console.error("proxy-upload error:", err);
