@@ -1,39 +1,29 @@
+// // client/api/proxy-upload.js  (temporary debug)
 export const config = { api: { bodyParser: false } };
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-
-  const RENDER_URL = process.env.RENDER_URL;
-  if (!RENDER_URL) {
-    console.error("❌ proxy-upload: missing RENDER_URL env variable");
-    return res.status(500).json({ error: "missing_render_url" });
+  // 1) basic method guard
+  if (req.method !== "POST") {
+    return res.status(405).json({ ok: false, reason: "Method not allowed" });
   }
 
+  // 2) show the env var value (masked)
+  const rawUrl = process.env.RENDER_URL || null;
+  const masked = rawUrl ? rawUrl.replace(/(https?:\/\/)(.+)/, "$1<RENDER_URL>") : null;
+
+  // 3) try to read the body into a buffer and measure size (safe small-file test)
   try {
-    // Collect request body
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
-    const bodyBuffer = Buffer.concat(chunks);
-
-    // Forward the request to Render
-    const response = await fetch(`${RENDER_URL}/api/upload`, {
-      method: "POST",
-      headers: {
-        "Content-Type": req.headers["content-type"] || "application/octet-stream",
-      },
-      body: bodyBuffer,
+    const buf = Buffer.concat(chunks || []);
+    return res.status(200).json({
+      ok: true,
+      renderUrlConfigured: !!rawUrl,
+      renderUrlMasked: masked,
+      bodyBytes: buf.length
     });
-
-    const text = await response.text();
-
-    try {
-      const json = JSON.parse(text);
-      return res.status(response.status).json(json);
-    } catch {
-      return res.status(response.status).send(text);
-    }
   } catch (err) {
-    console.error("❌ proxy-upload error:", err);
-    return res.status(500).json({ error: "proxy_failed", detail: err.message });
+    console.error("DEBUG proxy read error:", err);
+    return res.status(500).json({ ok: false, error: "read_failed", detail: err.message });
   }
 }
